@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🚕 的士每日收支與淨收入結算簿</title>
+    <title>🚕 的士時租收支與每日淨收入結算簿</title>
     <style>
         :root {
             --bg-dark: #12151E;
@@ -120,35 +120,47 @@
             gap: 6px;
         }
 
-        /* 日期與更份選擇 */
-        .date-shift-row {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .shift-tabs {
-            display: flex;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 3px;
-            border-radius: 10px;
+        /* 日期與時租時間選擇區塊 */
+        .time-panel {
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
-        .shift-btn {
-            flex: 1;
-            background: transparent;
-            border: none;
+        .date-duration-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .duration-badge {
+            background: rgba(96, 165, 250, 0.15);
+            border: 1px solid rgba(96, 165, 250, 0.35);
+            color: var(--accent-blue);
+            font-size: 13px;
+            font-weight: 800;
+            padding: 8px 12px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        .time-picker-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 8px;
+        }
+        .time-box {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .time-box label {
+            font-size: 11px;
             color: var(--text-muted);
-            font-size: 12px;
-            font-weight: bold;
-            padding: 8px 4px;
-            border-radius: 7px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .shift-btn.active {
-            background: var(--primary);
-            color: #111827;
         }
 
         /* 輸入欄位網格 */
@@ -184,7 +196,7 @@
             justify-content: space-between;
         }
 
-        .num-input, .date-input, .note-input {
+        .num-input, .date-input, .time-input, .note-input {
             width: 100%;
             background: rgba(0, 0, 0, 0.28);
             border: 1px solid rgba(255, 255, 255, 0.12);
@@ -196,9 +208,13 @@
             outline: none;
             transition: border 0.2s;
         }
-        .date-input { font-size: 14px; padding: 10px; }
+        .date-input { font-size: 14px; padding: 9px 12px; flex: 1; }
+        .time-input { font-size: 15px; padding: 10px; text-align: center; }
         .note-input { font-size: 14px; font-weight: normal; }
-        .num-input:focus { border-color: var(--primary); background: rgba(0, 0, 0, 0.45); }
+        .num-input:focus, .time-input:focus, .date-input:focus {
+            border-color: var(--primary);
+            background: rgba(0, 0, 0, 0.45);
+        }
 
         /* 實時結算看板 */
         .live-result-box {
@@ -234,6 +250,12 @@
             font-weight: 900;
             color: var(--primary);
         }
+        .hourly-rate-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--accent-blue);
+        }
         .day-combined-row {
             display: none;
             justify-content: space-between;
@@ -243,7 +265,7 @@
             border-radius: 8px;
             font-size: 12px;
             color: #34D399;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .save-btn {
@@ -295,6 +317,14 @@
             align-items: center;
             gap: 6px;
         }
+        .day-hours-tag {
+            font-size: 11px;
+            color: var(--accent-blue);
+            background: rgba(96, 165, 250, 0.12);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
         .day-net-badge {
             text-align: right;
         }
@@ -315,9 +345,11 @@
             padding: 8px 10px;
             border-radius: 8px;
             font-size: 12px;
+            flex-wrap: wrap;
+            gap: 4px;
         }
 
-        /* 單更明細行 */
+        /* 單次租車明細行 */
         .shift-subitem {
             display: flex;
             flex-direction: column;
@@ -371,11 +403,11 @@
 
 <div class="container">
     <div class="header">
-        <h2>🚕 的士每日收支結算簿</h2>
-        <p>車租 · 入氣 · 隧道費 · 自動計算每日淨收入</p>
+        <h2>🚕 的士時租收支結算簿</h2>
+        <p>自選租車時段 · 車租入氣隧道 · 每日淨收入統計</p>
     </div>
 
-    <!-- 頂部 2x2 統計看板（突顯每日淨收入與每月淨收入） -->
+    <!-- 頂部 2x2 統計看板 -->
     <div class="stats-grid">
         <div class="stat-box today-highlight">
             <span class="stat-label" id="selectedDayLabel">📅 今日淨收入</span>
@@ -390,19 +422,29 @@
             <span class="stat-val" id="statAvgDailyNet">$0</span>
         </div>
         <div class="stat-box">
-            <span class="stat-label">🗓️ 本月開工日數</span>
-            <span class="stat-val" id="statWorkDays">0 日</span>
+            <span class="stat-label">⏱️ 本月開工日數 / 時數</span>
+            <span class="stat-val" id="statWorkDays" style="font-size:17px;">0 日 (0h)</span>
         </div>
     </div>
 
     <!-- 入數主卡片 -->
     <div class="card">
-        <div class="date-shift-row">
-            <input type="date" id="workDate" class="date-input" onchange="onDateChange()">
-            <div class="shift-tabs">
-                <button class="shift-btn active" onclick="setShift('☀️ 早更', this)">早更</button>
-                <button class="shift-btn" onclick="setShift('🌙 夜更', this)">夜更</button>
-                <button class="shift-btn" onclick="setShift('🔥 特更', this)">特更</button>
+        <!-- 日期與時租時間選擇器 -->
+        <div class="time-panel">
+            <div class="date-duration-row">
+                <input type="date" id="workDate" class="date-input" onchange="onDateChange()">
+                <div class="duration-badge" id="durationBadge">⏱️ 共 6 小時</div>
+            </div>
+            <div class="time-picker-grid">
+                <div class="time-box">
+                    <label>🟢 取車時間</label>
+                    <input type="time" id="startTime" class="time-input" value="14:00" onchange="onTimeChange()">
+                </div>
+                <div style="color:var(--text-muted); font-weight:bold; padding-top:16px;">➔</div>
+                <div class="time-box">
+                    <label>🔴 還車時間</label>
+                    <input type="time" id="endTime" class="time-input" value="20:00" onchange="onTimeChange()">
+                </div>
             </div>
         </div>
 
@@ -422,7 +464,7 @@
             </div>
         </div>
 
-        <!-- 開支部分 (車租、入氣、隧道費) -->
+        <!-- 開支部分 (時租車租、入氣、隧道費) -->
         <div class="group-label exp">
             <span>➖ 出車開支成本</span>
             <span id="liveExpText">-$0</span>
@@ -430,10 +472,16 @@
         <div class="input-grid">
             <div class="field-box">
                 <label>
-                    <span>🚕 車租</span>
-                    <span style="color:var(--primary); cursor:pointer;" onclick="fillLastRent()">[填入上次]</span>
+                    <span>🚕 今次車租總額 ($)</span>
+                    <span style="color:var(--primary); cursor:pointer;" onclick="fillLastRent()">[上次車租]</span>
                 </label>
-                <input type="number" inputmode="decimal" id="expRent" class="num-input" placeholder="0" oninput="calcLive()">
+                <input type="number" inputmode="decimal" id="expRent" class="num-input" placeholder="直接輸入幾錢租" oninput="onDirectRentInput()">
+            </div>
+            <div class="field-box">
+                <label>
+                    <span>⏱️ 按時租自動計 (選填)</span>
+                </label>
+                <input type="number" inputmode="decimal" id="hourlyRate" class="num-input" placeholder="$/小時 (可不填)" oninput="onHourlyRateInput()">
             </div>
             <div class="field-box">
                 <label>⛽ 入氣 (石油氣)</label>
@@ -443,12 +491,12 @@
                 <label>🛣️ 隧道費</label>
                 <input type="number" inputmode="decimal" id="expTunnel" class="num-input" placeholder="0" oninput="calcLive()">
             </div>
-            <div class="field-box">
-                <label>🧽 其他 (洗車/茶水)</label>
+            <div class="field-box full">
+                <label>🧽 其他雜費 (洗車 / 茶水 / 泊車)</label>
                 <input type="number" inputmode="decimal" id="expOther" class="num-input" placeholder="0" oninput="calcLive()">
             </div>
             <div class="field-box full">
-                <input type="text" id="shiftNote" class="note-input" placeholder="📝 備註 (例如：落雨旺場、交更入滿氣...)">
+                <input type="text" id="shiftNote" class="note-input" placeholder="📝 備註 (例如：落雨旺場、交車入氣...)">
             </div>
         </div>
 
@@ -459,12 +507,15 @@
                 <span>總開支：<strong id="resTotalExp" style="color:var(--expense);">$0</strong></span>
             </div>
             <div class="net-row">
-                <span class="net-label">💰 呢筆落袋淨收入：</span>
+                <span class="net-label">💰 呢轉落袋淨收入：</span>
                 <span class="net-amount" id="resNetProfit">$0</span>
             </div>
-            <!-- 若同日已有紀錄，顯示合共每日淨收入 -->
+            <div class="hourly-rate-row">
+                <span>⚡ 呢轉平均時薪：</span>
+                <strong id="resHourlyProfit">$0 / 小時</strong>
+            </div>
             <div class="day-combined-row" id="dayCombinedRow">
-                <span>📅 連同呢筆，該日總淨收入：</span>
+                <span>📅 連同呢轉，該日合共淨收入：</span>
                 <strong id="resDayCombinedNet">$0</strong>
             </div>
         </div>
@@ -476,7 +527,7 @@
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">📅 每日淨收入結算表</h3>
-            <input type="month" id="filterMonth" class="date-input" style="width:auto; padding:6px 10px; font-size:12px;" onchange="renderAll()">
+            <input type="month" id="filterMonth" class="date-input" style="width:auto; flex:none; padding:6px 10px; font-size:12px;" onchange="renderAll()">
         </div>
         <div class="history-list" id="historyList"></div>
 
@@ -489,8 +540,8 @@
 </div>
 
 <script>
-    let currentShift = '☀️ 早更';
     let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v1')) || [];
+    let currentHours = 6;
 
     window.onload = () => {
         const now = new Date();
@@ -501,8 +552,21 @@
         document.getElementById('workDate').value = `${yyyy}-${mm}-${dd}`;
         document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
 
+        // 讀取上次使用過嘅時間與車租設定
+        const savedStart = localStorage.getItem('hk_taxi_start_time');
+        const savedEnd = localStorage.getItem('hk_taxi_end_time');
+        if (savedStart) document.getElementById('startTime').value = savedStart;
+        if (savedEnd) document.getElementById('endTime').value = savedEnd;
+
+        const savedHourlyRate = localStorage.getItem('hk_taxi_hourly_rate');
         const lastRent = localStorage.getItem('hk_taxi_last_rent');
-        if (lastRent) {
+
+        calcDurationHours();
+
+        if (savedHourlyRate) {
+            document.getElementById('hourlyRate').value = savedHourlyRate;
+            document.getElementById('expRent').value = Math.round(parseFloat(savedHourlyRate) * currentHours);
+        } else if (lastRent) {
             document.getElementById('expRent').value = lastRent;
         }
 
@@ -515,10 +579,59 @@
         renderAll();
     }
 
-    function setShift(shiftName, btnEl) {
-        currentShift = shiftName;
-        document.querySelectorAll('.shift-btn').forEach(b => b.classList.remove('active'));
-        btnEl.classList.add('active');
+    // 計算取車至還車時數（支援跨午夜）
+    function calcDurationHours() {
+        const startStr = document.getElementById('startTime').value;
+        const endStr = document.getElementById('endTime').value;
+        if (!startStr || !endStr) {
+            currentHours = 0;
+            document.getElementById('durationBadge').innerText = `⏱️ 共 0 小時`;
+            return;
+        }
+
+        const [sh, sm] = startStr.split(':').map(Number);
+        const [eh, em] = endStr.split(':').map(Number);
+
+        let startMinutes = sh * 60 + sm;
+        let endMinutes = eh * 60 + em;
+
+        // 跨日通宵處理 (例如 22:00 到 04:00)
+        if (endMinutes <= startMinutes) {
+            endMinutes += 24 * 60;
+        }
+
+        const diffHours = (endMinutes - startMinutes) / 60;
+        currentHours = Math.round(diffHours * 10) / 10;
+
+        document.getElementById('durationBadge').innerText = `⏱️ 共 ${currentHours} 小時`;
+    }
+
+    function onTimeChange() {
+        calcDurationHours();
+        // 如果用戶有輸入「按時租自動計」，改時間時自動更新車租總額
+        const rate = getVal('hourlyRate');
+        if (rate > 0) {
+            document.getElementById('expRent').value = Math.round(rate * currentHours);
+        }
+        calcLive();
+    }
+
+    function onHourlyRateInput() {
+        const rate = getVal('hourlyRate');
+        if (rate > 0) {
+            document.getElementById('expRent').value = Math.round(rate * currentHours);
+            localStorage.setItem('hk_taxi_hourly_rate', rate);
+        } else {
+            localStorage.removeItem('hk_taxi_hourly_rate');
+        }
+        calcLive();
+    }
+
+    function onDirectRentInput() {
+        // 當直接手動改車租總額時，清空時租單價欄避免衝突
+        document.getElementById('hourlyRate').value = '';
+        localStorage.removeItem('hk_taxi_hourly_rate');
+        calcLive();
     }
 
     function fillLastRent() {
@@ -539,7 +652,7 @@
         return (num >= 0 ? '$' : '-$') + Math.abs(Math.round(num)).toLocaleString();
     }
 
-    // 實時計算今筆與當日總淨收入
+    // 實時計算今轉與當日總淨收入
     function calcLive() {
         const cash = getVal('incCash');
         const app = getVal('incApp');
@@ -552,6 +665,7 @@
         const totalExp = rent + gas + tunnel + other;
 
         const net = totalInc - totalExp;
+        const hourlyProfit = currentHours > 0 ? net / currentHours : 0;
 
         document.getElementById('liveIncText').innerText = `+$${totalInc.toFixed(0)}`;
         document.getElementById('liveExpText').innerText = `-$${totalExp.toFixed(0)}`;
@@ -562,7 +676,8 @@
         netEl.innerText = formatMoney(net);
         netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--expense)';
 
-        // 檢查所選日期係咪已經有已儲存嘅紀錄，如果有就顯示「當日合共淨收入」
+        document.getElementById('resHourlyProfit').innerText = `${formatMoney(hourlyProfit)} / 小時`;
+
         const selectedDate = document.getElementById('workDate').value;
         const existingDayNet = records
             .filter(r => r.date === selectedDate)
@@ -577,9 +692,13 @@
         }
     }
 
-    // 儲存紀錄
+    // 儲存單次租車紀錄
     function saveShiftRecord() {
         const date = document.getElementById('workDate').value;
+        const startTime = document.getElementById('startTime').value;
+        const endTime = document.getElementById('endTime').value;
+        const timeSlotStr = `🕒 ${startTime}-${endTime} (${currentHours}h)`;
+
         const cash = getVal('incCash');
         const app = getVal('incApp');
         const totalInc = cash + app;
@@ -592,10 +711,13 @@
         const note = document.getElementById('shiftNote').value.trim();
 
         if (totalInc === 0 && totalExp === 0) {
-            alert('請先輸入今更嘅收入或開支金額！');
+            alert('請先輸入營業額或車租開支！');
             return;
         }
 
+        // 記住時間與車租設定
+        localStorage.setItem('hk_taxi_start_time', startTime);
+        localStorage.setItem('hk_taxi_end_time', endTime);
         if (rent > 0) {
             localStorage.setItem('hk_taxi_last_rent', rent);
         }
@@ -603,7 +725,10 @@
         const newRecord = {
             id: 'tx-' + Date.now(),
             date,
-            shift: currentShift,
+            shift: timeSlotStr,
+            startTime,
+            endTime,
+            hours: currentHours,
             cash,
             app,
             totalInc,
@@ -620,7 +745,7 @@
         records.sort((a, b) => b.date.localeCompare(a.date));
         localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
 
-        // 清空變動欄位（保留車租）
+        // 清空當轉營業額與變動開支（保留時間與車租方便下次用）
         document.getElementById('incCash').value = '';
         document.getElementById('incApp').value = '';
         document.getElementById('expGas').value = '';
@@ -639,7 +764,6 @@
         const listEl = document.getElementById('historyList');
         listEl.innerHTML = '';
 
-        // 1. 計算所選日期（今日）淨收入
         const nowStr = new Date().toISOString().slice(0, 10);
         document.getElementById('selectedDayLabel').innerText =
             selectedDate === nowStr ? '📅 今日淨收入' : `📅 ${selectedDate.slice(5)} 淨收入`;
@@ -651,7 +775,6 @@
         todayNetEl.innerText = formatMoney(dayNet);
         todayNetEl.style.color = dayNet >= 0 ? '#34D399' : 'var(--expense)';
 
-        // 2. 篩選當月紀錄並按「日期」分組計算每日淨收入
         const filtered = selectedMonth
             ? records.filter(r => r.date.startsWith(selectedMonth))
             : records;
@@ -661,6 +784,7 @@
             if (!dayGroups[r.date]) {
                 dayGroups[r.date] = {
                     date: r.date,
+                    totalHours: 0,
                     totalInc: 0,
                     totalExp: 0,
                     totalRent: 0,
@@ -672,6 +796,7 @@
                 };
             }
             const g = dayGroups[r.date];
+            g.totalHours += (r.hours || 0);
             g.totalInc += r.totalInc;
             g.totalExp += r.totalExp;
             g.totalRent += r.rent;
@@ -684,13 +809,13 @@
 
         const sortedDays = Object.values(dayGroups).sort((a, b) => b.date.localeCompare(a.date));
 
-        // 3. 更新當月總計與「每日平均淨收入」
         const monthNet = sortedDays.reduce((sum, d) => sum + d.dailyNet, 0);
+        const monthHours = Math.round(sortedDays.reduce((sum, d) => sum + d.totalHours, 0) * 10) / 10;
         const uniqueWorkDays = sortedDays.length;
         const avgDailyNet = uniqueWorkDays > 0 ? Math.round(monthNet / uniqueWorkDays) : 0;
 
         document.getElementById('statMonthNet').innerText = formatMoney(monthNet);
-        document.getElementById('statWorkDays').innerText = `${uniqueWorkDays} 日`;
+        document.getElementById('statWorkDays').innerText = `${uniqueWorkDays} 日 (${monthHours}h)`;
         document.getElementById('statAvgDailyNet').innerText = formatMoney(avgDailyNet);
 
         if (sortedDays.length === 0) {
@@ -698,7 +823,6 @@
             return;
         }
 
-        // 4. 渲染「每日淨收入」卡片
         sortedDays.forEach(day => {
             const card = document.createElement('div');
             card.className = `day-group-card ${day.dailyNet < 0 ? 'loss' : ''}`;
@@ -715,9 +839,9 @@
                     <div class="shift-subitem">
                         <div class="shift-sub-top">
                             <div>
-                                <span class="shift-badge">${item.shift}</span>
+                                <span class="shift-badge">${item.shift || '時租'}</span>
                                 <span style="color:var(--text-muted); margin-left:6px;">
-                                    收 $${item.totalInc} | 支 -$${item.totalExp}
+                                    收 $${item.totalInc} | 租 $${item.rent} | 支 -$${item.totalExp}
                                 </span>
                             </div>
                             <div>
@@ -732,9 +856,14 @@
                 `;
             });
 
+            const hoursLabel = day.totalHours > 0 ? `<span class="day-hours-tag">⏱️ ${Math.round(day.totalHours * 10) / 10} 小時</span>` : '';
+
             card.innerHTML = `
                 <div class="day-header">
-                    <div class="day-title">📅 ${day.date}</div>
+                    <div class="day-title">
+                        <span>📅 ${day.date}</span>
+                        ${hoursLabel}
+                    </div>
                     <div class="day-net-badge">
                         <span class="day-net-label">當日淨收入</span>
                         <span class="day-net-val" style="color:${day.dailyNet >= 0 ? 'var(--primary)' : 'var(--expense)'}">
@@ -765,7 +894,7 @@
         const blob = new Blob([JSON.stringify(records)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `taxi-daily-ledger-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `taxi-hourly-ledger-${new Date().toISOString().slice(0,10)}.json`;
         a.click();
     }
 
