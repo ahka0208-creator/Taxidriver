@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🚕 的士每日收支與淨收入結算簿</title>
+    <style>
+        :root {
+            --bg-dark: #12151E;
+            --bg-card: #1C212E;
+            --primary: #FBBF24;       /* 金色：淨收入 */
+            --income: #10B981;        /* 綠色：營業額 */
+            --expense: #F87171;       /* 紅色：開支成本 */
+            --accent-blue: #60A5FA;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        .header h2 {
+            margin: 0 0 4px 0;
+            font-size: 22px;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* 頂部 2x2 每日及每月統計儀表板 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .stat-box.today-highlight {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(28, 33, 46, 1) 100%);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+        .stat-box.month-highlight {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.18) 0%, rgba(28, 33, 46, 1) 100%);
+            border-color: rgba(251, 191, 36, 0.4);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .stat-val {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text-main);
+        }
+        .stat-box.today-highlight .stat-val { color: #34D399; font-size: 22px; }
+        .stat-box.month-highlight .stat-val { color: var(--primary); font-size: 22px; }
+
+        /* 卡片通用樣式 */
+        .card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 800;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* 日期與更份選擇 */
+        .date-shift-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .shift-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .shift-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: bold;
+            padding: 8px 4px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .shift-btn.active {
+            background: var(--primary);
+            color: #111827;
+        }
+
+        /* 輸入欄位網格 */
+        .group-label {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 14px 0 8px 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+        .group-label.inc { color: var(--income); }
+        .group-label.exp { color: var(--expense); }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .field-box {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .field-box.full {
+            grid-column: 1 / -1;
+        }
+        .field-box label {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .num-input, .date-input, .note-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .date-input { font-size: 14px; padding: 10px; }
+        .note-input { font-size: 14px; font-weight: normal; }
+        .num-input:focus { border-color: var(--primary); background: rgba(0, 0, 0, 0.45); }
+
+        /* 實時結算看板 */
+        .live-result-box {
+            background: rgba(0, 0, 0, 0.38);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin: 18px 0 14px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sub-calc-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .net-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.12);
+        }
+        .net-label {
+            font-size: 15px;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+        .net-amount {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--primary);
+        }
+        .day-combined-row {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(16, 185, 129, 0.12);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #34D399;
+            margin-top: 4px;
+        }
+
+        .save-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
+            color: #111827;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.25);
+            transition: transform 0.1s;
+        }
+        .save-btn:active { transform: scale(0.98); }
+
+        /* 每日淨收入列表樣式 */
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .day-group-card {
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--primary);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .day-group-card.loss {
+            border-left-color: var(--expense);
+        }
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .day-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .day-net-badge {
+            text-align: right;
+        }
+        .day-net-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: block;
+        }
+        .day-net-val {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--primary);
+        }
+        .day-summary-pills {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        /* 單更明細行 */
+        .shift-subitem {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 12px;
+        }
+        .shift-sub-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .shift-badge {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--primary);
+        }
+        .del-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+        .del-btn:hover { color: var(--expense); }
+
+        .footer-tools {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .tool-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>🚕 的士每日收支結算簿</h2>
+        <p>車租 · 入氣 · 隧道費 · 自動計算每日淨收入</p>
+    </div>
+
+    <!-- 頂部 2x2 統計看板（突顯每日淨收入與每月淨收入） -->
+    <div class="stats-grid">
+        <div class="stat-box today-highlight">
+            <span class="stat-label" id="selectedDayLabel">📅 今日淨收入</span>
+            <span class="stat-val" id="statTodayNet">$0</span>
+        </div>
+        <div class="stat-box month-highlight">
+            <span class="stat-label">💰 本月累積淨收入</span>
+            <span class="stat-val" id="statMonthNet">$0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">📊 每日平均淨收入</span>
+            <span class="stat-val" id="statAvgDailyNet">$0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">🗓️ 本月開工日數</span>
+            <span class="stat-val" id="statWorkDays">0 日</span>
+        </div>
+    </div>
+
+    <!-- 入數主卡片 -->
+    <div class="card">
+        <div class="date-shift-row">
+            <input type="date" id="workDate" class="date-input" onchange="onDateChange()">
+            <div class="shift-tabs">
+                <button class="shift-btn active" onclick="setShift('☀️ 早更', this)">早更</button>
+                <button class="shift-btn" onclick="setShift('🌙 夜更', this)">夜更</button>
+                <button class="shift-btn" onclick="setShift('🔥 特更', this)">特更</button>
+            </div>
+        </div>
+
+        <!-- 收入部分 -->
+        <div class="group-label inc">
+            <span>➕ 營業額收入</span>
+            <span id="liveIncText">+$0</span>
+        </div>
+        <div class="input-grid">
+            <div class="field-box">
+                <label>💵 現金錶錢 / 總額</label>
+                <input type="number" inputmode="decimal" id="incCash" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+            <div class="field-box">
+                <label>📱 電子 / 台單 (選填)</label>
+                <input type="number" inputmode="decimal" id="incApp" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+        </div>
+
+        <!-- 開支部分 (車租、入氣、隧道費) -->
+        <div class="group-label exp">
+            <span>➖ 出車開支成本</span>
+            <span id="liveExpText">-$0</span>
+        </div>
+        <div class="input-grid">
+            <div class="field-box">
+                <label>
+                    <span>🚕 車租</span>
+                    <span style="color:var(--primary); cursor:pointer;" onclick="fillLastRent()">[填入上次]</span>
+                </label>
+                <input type="number" inputmode="decimal" id="expRent" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+            <div class="field-box">
+                <label>⛽ 入氣 (石油氣)</label>
+                <input type="number" inputmode="decimal" id="expGas" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+            <div class="field-box">
+                <label>🛣️ 隧道費</label>
+                <input type="number" inputmode="decimal" id="expTunnel" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+            <div class="field-box">
+                <label>🧽 其他 (洗車/茶水)</label>
+                <input type="number" inputmode="decimal" id="expOther" class="num-input" placeholder="0" oninput="calcLive()">
+            </div>
+            <div class="field-box full">
+                <input type="text" id="shiftNote" class="note-input" placeholder="📝 備註 (例如：落雨旺場、交更入滿氣...)">
+            </div>
+        </div>
+
+        <!-- 實時結算看板 -->
+        <div class="live-result-box">
+            <div class="sub-calc-row">
+                <span>總營業額：<strong id="resTotalInc" style="color:var(--income);">$0</strong></span>
+                <span>總開支：<strong id="resTotalExp" style="color:var(--expense);">$0</strong></span>
+            </div>
+            <div class="net-row">
+                <span class="net-label">💰 呢筆落袋淨收入：</span>
+                <span class="net-amount" id="resNetProfit">$0</span>
+            </div>
+            <!-- 若同日已有紀錄，顯示合共每日淨收入 -->
+            <div class="day-combined-row" id="dayCombinedRow">
+                <span>📅 連同呢筆，該日總淨收入：</span>
+                <strong id="resDayCombinedNet">$0</strong>
+            </div>
+        </div>
+
+        <button class="save-btn" onclick="saveShiftRecord()">💾 儲存並計入每日淨收入</button>
+    </div>
+
+    <!-- 每日淨收入結算紀錄卡片 -->
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">📅 每日淨收入結算表</h3>
+            <input type="month" id="filterMonth" class="date-input" style="width:auto; padding:6px 10px; font-size:12px;" onchange="renderAll()">
+        </div>
+        <div class="history-list" id="historyList"></div>
+
+        <div class="footer-tools">
+            <button class="tool-btn" onclick="exportData()">📤 匯出備份</button>
+            <button class="tool-btn" onclick="document.getElementById('importInput').click()">📥 匯入還原</button>
+            <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentShift = '☀️ 早更';
+    let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v1')) || [];
+
+    window.onload = () => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+
+        document.getElementById('workDate').value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
+
+        const lastRent = localStorage.getItem('hk_taxi_last_rent');
+        if (lastRent) {
+            document.getElementById('expRent').value = lastRent;
+        }
+
+        calcLive();
+        renderAll();
+    };
+
+    function onDateChange() {
+        calcLive();
+        renderAll();
+    }
+
+    function setShift(shiftName, btnEl) {
+        currentShift = shiftName;
+        document.querySelectorAll('.shift-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+    }
+
+    function fillLastRent() {
+        const lastRent = localStorage.getItem('hk_taxi_last_rent');
+        if (lastRent) {
+            document.getElementById('expRent').value = lastRent;
+            calcLive();
+        } else {
+            alert('暫時未有上次車租紀錄');
+        }
+    }
+
+    function getVal(id) {
+        return parseFloat(document.getElementById(id).value) || 0;
+    }
+
+    function formatMoney(num) {
+        return (num >= 0 ? '$' : '-$') + Math.abs(Math.round(num)).toLocaleString();
+    }
+
+    // 實時計算今筆與當日總淨收入
+    function calcLive() {
+        const cash = getVal('incCash');
+        const app = getVal('incApp');
+        const totalInc = cash + app;
+
+        const rent = getVal('expRent');
+        const gas = getVal('expGas');
+        const tunnel = getVal('expTunnel');
+        const other = getVal('expOther');
+        const totalExp = rent + gas + tunnel + other;
+
+        const net = totalInc - totalExp;
+
+        document.getElementById('liveIncText').innerText = `+$${totalInc.toFixed(0)}`;
+        document.getElementById('liveExpText').innerText = `-$${totalExp.toFixed(0)}`;
+        document.getElementById('resTotalInc').innerText = `$${totalInc.toFixed(0)}`;
+        document.getElementById('resTotalExp').innerText = `$${totalExp.toFixed(0)}`;
+
+        const netEl = document.getElementById('resNetProfit');
+        netEl.innerText = formatMoney(net);
+        netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--expense)';
+
+        // 檢查所選日期係咪已經有已儲存嘅紀錄，如果有就顯示「當日合共淨收入」
+        const selectedDate = document.getElementById('workDate').value;
+        const existingDayNet = records
+            .filter(r => r.date === selectedDate)
+            .reduce((sum, r) => sum + r.net, 0);
+
+        const combinedRow = document.getElementById('dayCombinedRow');
+        if (existingDayNet !== 0) {
+            combinedRow.style.display = 'flex';
+            document.getElementById('resDayCombinedNet').innerText = formatMoney(existingDayNet + net);
+        } else {
+            combinedRow.style.display = 'none';
+        }
+    }
+
+    // 儲存紀錄
+    function saveShiftRecord() {
+        const date = document.getElementById('workDate').value;
+        const cash = getVal('incCash');
+        const app = getVal('incApp');
+        const totalInc = cash + app;
+
+        const rent = getVal('expRent');
+        const gas = getVal('expGas');
+        const tunnel = getVal('expTunnel');
+        const other = getVal('expOther');
+        const totalExp = rent + gas + tunnel + other;
+        const note = document.getElementById('shiftNote').value.trim();
+
+        if (totalInc === 0 && totalExp === 0) {
+            alert('請先輸入今更嘅收入或開支金額！');
+            return;
+        }
+
+        if (rent > 0) {
+            localStorage.setItem('hk_taxi_last_rent', rent);
+        }
+
+        const newRecord = {
+            id: 'tx-' + Date.now(),
+            date,
+            shift: currentShift,
+            cash,
+            app,
+            totalInc,
+            rent,
+            gas,
+            tunnel,
+            other,
+            totalExp,
+            net: totalInc - totalExp,
+            note
+        };
+
+        records.unshift(newRecord);
+        records.sort((a, b) => b.date.localeCompare(a.date));
+        localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+
+        // 清空變動欄位（保留車租）
+        document.getElementById('incCash').value = '';
+        document.getElementById('incApp').value = '';
+        document.getElementById('expGas').value = '';
+        document.getElementById('expTunnel').value = '';
+        document.getElementById('expOther').value = '';
+        document.getElementById('shiftNote').value = '';
+
+        calcLive();
+        renderAll();
+    }
+
+    // 渲染統計看板與每日淨收入列表
+    function renderAll() {
+        const selectedDate = document.getElementById('workDate').value;
+        const selectedMonth = document.getElementById('filterMonth').value;
+        const listEl = document.getElementById('historyList');
+        listEl.innerHTML = '';
+
+        // 1. 計算所選日期（今日）淨收入
+        const nowStr = new Date().toISOString().slice(0, 10);
+        document.getElementById('selectedDayLabel').innerText =
+            selectedDate === nowStr ? '📅 今日淨收入' : `📅 ${selectedDate.slice(5)} 淨收入`;
+
+        const dayNet = records
+            .filter(r => r.date === selectedDate)
+            .reduce((sum, r) => sum + r.net, 0);
+        const todayNetEl = document.getElementById('statTodayNet');
+        todayNetEl.innerText = formatMoney(dayNet);
+        todayNetEl.style.color = dayNet >= 0 ? '#34D399' : 'var(--expense)';
+
+        // 2. 篩選當月紀錄並按「日期」分組計算每日淨收入
+        const filtered = selectedMonth
+            ? records.filter(r => r.date.startsWith(selectedMonth))
+            : records;
+
+        const dayGroups = {};
+        filtered.forEach(r => {
+            if (!dayGroups[r.date]) {
+                dayGroups[r.date] = {
+                    date: r.date,
+                    totalInc: 0,
+                    totalExp: 0,
+                    totalRent: 0,
+                    totalGas: 0,
+                    totalTunnel: 0,
+                    totalOther: 0,
+                    dailyNet: 0,
+                    items: []
+                };
+            }
+            const g = dayGroups[r.date];
+            g.totalInc += r.totalInc;
+            g.totalExp += r.totalExp;
+            g.totalRent += r.rent;
+            g.totalGas += r.gas;
+            g.totalTunnel += r.tunnel;
+            g.totalOther += r.other;
+            g.dailyNet += r.net;
+            g.items.push(r);
+        });
+
+        const sortedDays = Object.values(dayGroups).sort((a, b) => b.date.localeCompare(a.date));
+
+        // 3. 更新當月總計與「每日平均淨收入」
+        const monthNet = sortedDays.reduce((sum, d) => sum + d.dailyNet, 0);
+        const uniqueWorkDays = sortedDays.length;
+        const avgDailyNet = uniqueWorkDays > 0 ? Math.round(monthNet / uniqueWorkDays) : 0;
+
+        document.getElementById('statMonthNet').innerText = formatMoney(monthNet);
+        document.getElementById('statWorkDays').innerText = `${uniqueWorkDays} 日`;
+        document.getElementById('statAvgDailyNet').innerText = formatMoney(avgDailyNet);
+
+        if (sortedDays.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding:30px 0; color:var(--text-muted); font-size:13px;">呢個月暫時未有出車紀錄</div>`;
+            return;
+        }
+
+        // 4. 渲染「每日淨收入」卡片
+        sortedDays.forEach(day => {
+            const card = document.createElement('div');
+            card.className = `day-group-card ${day.dailyNet < 0 ? 'loss' : ''}`;
+
+            let expBreakdown = [];
+            if (day.totalRent > 0) expBreakdown.push(`車租 $${day.totalRent}`);
+            if (day.totalGas > 0) expBreakdown.push(`入氣 $${day.totalGas}`);
+            if (day.totalTunnel > 0) expBreakdown.push(`隧道 $${day.totalTunnel}`);
+            if (day.totalOther > 0) expBreakdown.push(`其他 $${day.totalOther}`);
+
+            let shiftsHtml = '';
+            day.items.forEach(item => {
+                shiftsHtml += `
+                    <div class="shift-subitem">
+                        <div class="shift-sub-top">
+                            <div>
+                                <span class="shift-badge">${item.shift}</span>
+                                <span style="color:var(--text-muted); margin-left:6px;">
+                                    收 $${item.totalInc} | 支 -$${item.totalExp}
+                                </span>
+                            </div>
+                            <div>
+                                <strong style="color:${item.net >= 0 ? 'var(--text-main)' : 'var(--expense)'};">
+                                    淨收 ${formatMoney(item.net)}
+                                </strong>
+                                <button class="del-btn" onclick="deleteRecord('${item.id}')" title="刪除此筆">✕</button>
+                            </div>
+                        </div>
+                        ${item.note ? `<div style="color:#CBD5E1; padding-left:4px;">📝 ${item.note}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            card.innerHTML = `
+                <div class="day-header">
+                    <div class="day-title">📅 ${day.date}</div>
+                    <div class="day-net-badge">
+                        <span class="day-net-label">當日淨收入</span>
+                        <span class="day-net-val" style="color:${day.dailyNet >= 0 ? 'var(--primary)' : 'var(--expense)'}">
+                            ${formatMoney(day.dailyNet)}
+                        </span>
+                    </div>
+                </div>
+                <div class="day-summary-pills">
+                    <span style="color:var(--income); font-weight:bold;">總營業額: +$${day.totalInc}</span>
+                    <span style="color:var(--expense);">總開支: -$${day.totalExp} (${expBreakdown.join(' · ') || '無'})</span>
+                </div>
+                ${shiftsHtml}
+            `;
+            listEl.appendChild(card);
+        });
+    }
+
+    function deleteRecord(id) {
+        if (!confirm('確定要刪除呢筆紀錄嗎？')) return;
+        records = records.filter(r => r.id !== id);
+        localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+        calcLive();
+        renderAll();
+    }
+
+    function exportData() {
+        if (records.length === 0) return alert('暫時無紀錄可以匯出！');
+        const blob = new Blob([JSON.stringify(records)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `taxi-daily-ledger-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function importData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const imported = JSON.parse(ev.target.result);
+                if (!Array.isArray(imported)) throw new Error();
+                records = imported;
+                localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+                calcLive();
+                renderAll();
+                alert('✅ 成功還原出車紀錄！');
+            } catch {
+                alert('⚠️ 備份檔案格式不正確！');
+            }
+        };
+        reader.readAsText(file);
+    }
+</script>
+
+</body>
+</html>
