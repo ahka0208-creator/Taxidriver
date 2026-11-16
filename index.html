@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🚕 的士時租收支與每日淨收入結算簿</title>
+    <title>🚕 的士逐單計收支與淨收入結算簿</title>
     <style>
         :root {
             --bg-dark: #12151E;
@@ -216,6 +216,55 @@
             background: rgba(0, 0, 0, 0.45);
         }
 
+        /* 逐單記帳專屬樣式 */
+        .trip-input-row {
+            display: flex;
+            gap: 8px;
+        }
+        .trip-add-btn {
+            background: var(--income);
+            color: #000;
+            border: none;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-weight: 900;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .trip-add-btn:active { transform: scale(0.95); }
+        .trip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .trip-tag {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34D399;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .trip-tag span {
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 50%;
+        }
+        .trip-tag span:hover { color: var(--expense); }
+
         /* 實時結算看板 */
         .live-result-box {
             background: rgba(0, 0, 0, 0.38);
@@ -404,7 +453,7 @@
 <div class="container">
     <div class="header">
         <h2>🚕 的士時租收支結算簿</h2>
-        <p>自選租車時段 · 車租入氣隧道 · 每日淨收入統計</p>
+        <p>做完一單入一筆 · 系統自動計總營業額</p>
     </div>
 
     <!-- 頂部 2x2 統計看板 -->
@@ -448,23 +497,23 @@
             </div>
         </div>
 
-        <!-- 收入部分 -->
+        <!-- 收入部分 (改為逐單輸入) -->
         <div class="group-label inc">
-            <span>➕ 營業額收入</span>
+            <span>➕ 記低每單車資 (自動計總數)</span>
             <span id="liveIncText">+$0</span>
         </div>
         <div class="input-grid">
-            <div class="field-box">
-                <label>💵 現金錶錢 / 總額</label>
-                <input type="number" inputmode="decimal" id="incCash" class="num-input" placeholder="0" oninput="calcLive()">
-            </div>
-            <div class="field-box">
-                <label>📱 電子 / 台單 (選填)</label>
-                <input type="number" inputmode="decimal" id="incApp" class="num-input" placeholder="0" oninput="calcLive()">
+            <div class="field-box full">
+                <label>💵 單程車資 ($)</label>
+                <div class="trip-input-row">
+                    <input type="number" inputmode="decimal" id="tripAmount" class="num-input" placeholder="例如: 85" onkeypress="if(event.key==='Enter') addTrip()">
+                    <button class="trip-add-btn" onclick="addTrip()">➕ 記數</button>
+                </div>
+                <div class="trip-list" id="tripListContainer"></div>
             </div>
         </div>
 
-        <!-- 開支部分 (時租車租、入氣、隧道費) -->
+        <!-- 開支部分 -->
         <div class="group-label exp">
             <span>➖ 出車開支成本</span>
             <span id="liveExpText">-$0</span>
@@ -520,7 +569,7 @@
             </div>
         </div>
 
-        <button class="save-btn" onclick="saveShiftRecord()">💾 儲存並計入每日淨收入</button>
+        <button class="save-btn" onclick="saveShiftRecord()">💾 儲存結算並計入紀錄</button>
     </div>
 
     <!-- 每日淨收入結算紀錄卡片 -->
@@ -540,8 +589,9 @@
 </div>
 
 <script>
-    let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v1')) || [];
+    let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v2')) || [];
     let currentHours = 6;
+    let currentTrips = []; // 暫存目前呢轉車嘅每一單收入
 
     window.onload = () => {
         const now = new Date();
@@ -552,7 +602,6 @@
         document.getElementById('workDate').value = `${yyyy}-${mm}-${dd}`;
         document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
 
-        // 讀取上次使用過嘅時間與車租設定
         const savedStart = localStorage.getItem('hk_taxi_start_time');
         const savedEnd = localStorage.getItem('hk_taxi_end_time');
         if (savedStart) document.getElementById('startTime').value = savedStart;
@@ -570,6 +619,7 @@
             document.getElementById('expRent').value = lastRent;
         }
 
+        renderTrips();
         calcLive();
         renderAll();
     };
@@ -579,7 +629,7 @@
         renderAll();
     }
 
-    // 計算取車至還車時數（支援跨午夜）
+    // 計算時數
     function calcDurationHours() {
         const startStr = document.getElementById('startTime').value;
         const endStr = document.getElementById('endTime').value;
@@ -595,7 +645,6 @@
         let startMinutes = sh * 60 + sm;
         let endMinutes = eh * 60 + em;
 
-        // 跨日通宵處理 (例如 22:00 到 04:00)
         if (endMinutes <= startMinutes) {
             endMinutes += 24 * 60;
         }
@@ -608,7 +657,6 @@
 
     function onTimeChange() {
         calcDurationHours();
-        // 如果用戶有輸入「按時租自動計」，改時間時自動更新車租總額
         const rate = getVal('hourlyRate');
         if (rate > 0) {
             document.getElementById('expRent').value = Math.round(rate * currentHours);
@@ -628,7 +676,6 @@
     }
 
     function onDirectRentInput() {
-        // 當直接手動改車租總額時，清空時租單價欄避免衝突
         document.getElementById('hourlyRate').value = '';
         localStorage.removeItem('hk_taxi_hourly_rate');
         calcLive();
@@ -652,11 +699,37 @@
         return (num >= 0 ? '$' : '-$') + Math.abs(Math.round(num)).toLocaleString();
     }
 
-    // 實時計算今轉與當日總淨收入
+    // --- 逐單記帳邏輯 ---
+    function addTrip() {
+        const input = document.getElementById('tripAmount');
+        const val = parseFloat(input.value);
+        if (!val || val <= 0) return;
+        
+        currentTrips.push(val);
+        input.value = ''; // 清空輸入框準備入下一單
+        input.focus();    // 保持游標喺入面
+        renderTrips();
+        calcLive();
+    }
+
+    function removeTrip(index) {
+        currentTrips.splice(index, 1);
+        renderTrips();
+        calcLive();
+    }
+
+    function renderTrips() {
+        const container = document.getElementById('tripListContainer');
+        container.innerHTML = '';
+        currentTrips.forEach((amt, idx) => {
+            container.innerHTML += `<span class="trip-tag">$${amt} <span onclick="removeTrip(${idx})">✕</span></span>`;
+        });
+    }
+
+    // 實時計算總淨收入
     function calcLive() {
-        const cash = getVal('incCash');
-        const app = getVal('incApp');
-        const totalInc = cash + app;
+        // 總營業額變咗係逐單加埋
+        const totalInc = currentTrips.reduce((sum, amt) => sum + amt, 0);
 
         const rent = getVal('expRent');
         const gas = getVal('expGas');
@@ -692,16 +765,15 @@
         }
     }
 
-    // 儲存單次租車紀錄
+    // 儲存結算並計入紀錄
     function saveShiftRecord() {
         const date = document.getElementById('workDate').value;
         const startTime = document.getElementById('startTime').value;
         const endTime = document.getElementById('endTime').value;
         const timeSlotStr = `🕒 ${startTime}-${endTime} (${currentHours}h)`;
 
-        const cash = getVal('incCash');
-        const app = getVal('incApp');
-        const totalInc = cash + app;
+        const totalInc = currentTrips.reduce((sum, amt) => sum + amt, 0);
+        const tripCount = currentTrips.length;
 
         const rent = getVal('expRent');
         const gas = getVal('expGas');
@@ -711,11 +783,10 @@
         const note = document.getElementById('shiftNote').value.trim();
 
         if (totalInc === 0 && totalExp === 0) {
-            alert('請先輸入營業額或車租開支！');
+            alert('請先輸入單程車資或車租開支！');
             return;
         }
 
-        // 記住時間與車租設定
         localStorage.setItem('hk_taxi_start_time', startTime);
         localStorage.setItem('hk_taxi_end_time', endTime);
         if (rent > 0) {
@@ -729,8 +800,8 @@
             startTime,
             endTime,
             hours: currentHours,
-            cash,
-            app,
+            trips: [...currentTrips],
+            tripCount,
             totalInc,
             rent,
             gas,
@@ -743,11 +814,12 @@
 
         records.unshift(newRecord);
         records.sort((a, b) => b.date.localeCompare(a.date));
-        localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+        localStorage.setItem('hk_taxi_ledger_v2', JSON.stringify(records));
 
-        // 清空當轉營業額與變動開支（保留時間與車租方便下次用）
-        document.getElementById('incCash').value = '';
-        document.getElementById('incApp').value = '';
+        // 清空當轉流水與變動開支
+        currentTrips = [];
+        renderTrips();
+        
         document.getElementById('expGas').value = '';
         document.getElementById('expTunnel').value = '';
         document.getElementById('expOther').value = '';
@@ -786,6 +858,7 @@
                     date: r.date,
                     totalHours: 0,
                     totalInc: 0,
+                    totalTrips: 0,
                     totalExp: 0,
                     totalRent: 0,
                     totalGas: 0,
@@ -798,6 +871,7 @@
             const g = dayGroups[r.date];
             g.totalHours += (r.hours || 0);
             g.totalInc += r.totalInc;
+            g.totalTrips += (r.tripCount || 0);
             g.totalExp += r.totalExp;
             g.totalRent += r.rent;
             g.totalGas += r.gas;
@@ -835,13 +909,14 @@
 
             let shiftsHtml = '';
             day.items.forEach(item => {
+                const tripLabel = item.tripCount > 0 ? `(${item.tripCount} 單)` : '';
                 shiftsHtml += `
                     <div class="shift-subitem">
                         <div class="shift-sub-top">
                             <div>
                                 <span class="shift-badge">${item.shift || '時租'}</span>
                                 <span style="color:var(--text-muted); margin-left:6px;">
-                                    收 $${item.totalInc} | 租 $${item.rent} | 支 -$${item.totalExp}
+                                    收 $${item.totalInc} ${tripLabel} | 租 $${item.rent} | 支 -$${item.totalExp}
                                 </span>
                             </div>
                             <div>
@@ -857,6 +932,7 @@
             });
 
             const hoursLabel = day.totalHours > 0 ? `<span class="day-hours-tag">⏱️ ${Math.round(day.totalHours * 10) / 10} 小時</span>` : '';
+            const totalTripsLabel = day.totalTrips > 0 ? ` (共 ${day.totalTrips} 單)` : '';
 
             card.innerHTML = `
                 <div class="day-header">
@@ -872,7 +948,7 @@
                     </div>
                 </div>
                 <div class="day-summary-pills">
-                    <span style="color:var(--income); font-weight:bold;">總營業額: +$${day.totalInc}</span>
+                    <span style="color:var(--income); font-weight:bold;">總營業額: +$${day.totalInc} ${totalTripsLabel}</span>
                     <span style="color:var(--expense);">總開支: -$${day.totalExp} (${expBreakdown.join(' · ') || '無'})</span>
                 </div>
                 ${shiftsHtml}
@@ -884,7 +960,7 @@
     function deleteRecord(id) {
         if (!confirm('確定要刪除呢筆紀錄嗎？')) return;
         records = records.filter(r => r.id !== id);
-        localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+        localStorage.setItem('hk_taxi_ledger_v2', JSON.stringify(records));
         calcLive();
         renderAll();
     }
@@ -894,7 +970,7 @@
         const blob = new Blob([JSON.stringify(records)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `taxi-hourly-ledger-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `taxi-trip-ledger-${new Date().toISOString().slice(0,10)}.json`;
         a.click();
     }
 
@@ -907,7 +983,7 @@
                 const imported = JSON.parse(ev.target.result);
                 if (!Array.isArray(imported)) throw new Error();
                 records = imported;
-                localStorage.setItem('hk_taxi_ledger_v1', JSON.stringify(records));
+                localStorage.setItem('hk_taxi_ledger_v2', JSON.stringify(records));
                 calcLive();
                 renderAll();
                 alert('✅ 成功還原出車紀錄！');
