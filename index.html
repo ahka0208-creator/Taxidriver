@@ -6,15 +6,16 @@
     <title>🚕 的士逐單計收支與淨收入結算簿</title>
     <style>
         :root {
-            --bg-dark: #12151E;
-            --bg-card: #1C212E;
-            --primary: #FBBF24;       /* 金色：淨收入 */
-            --income: #10B981;        /* 綠色：營業額 */
-            --expense: #F87171;       /* 紅色：開支成本 */
-            --accent-blue: #60A5FA;
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --primary: #FBBF24;       
+            --income: #10B981;        
+            --expense: #F87171;       
+            --accent-blue: #38BDF8;
             --text-main: #F8FAFC;
             --text-muted: #94A3B8;
             --border: rgba(255, 255, 255, 0.08);
+            --nav-height: 65px;
         }
 
         * {
@@ -27,182 +28,127 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             margin: 0;
-            padding: 16px;
+            padding: 16px 16px calc(var(--nav-height) + 20px) 16px;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding-bottom: 60px;
         }
 
         .container {
             width: 100%;
-            max-width: 440px;
+            max-width: 460px;
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 2px;
-        }
-        .header h2 {
-            margin: 0 0 4px 0;
-            font-size: 22px;
-            color: var(--primary);
-            letter-spacing: 0.5px;
-        }
-        .header p {
-            margin: 0;
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        /* 頂部 2x2 每日及每月統計儀表板 */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .stat-box {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 14px;
-            display: flex;
+        /* 頁面切換控制 */
+        .tab-content {
+            display: none;
             flex-direction: column;
-            justify-content: center;
+            gap: 16px;
+            animation: fadeIn 0.2s ease-out;
         }
-        .stat-box.today-highlight {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(28, 33, 46, 1) 100%);
-            border-color: rgba(16, 185, 129, 0.4);
+        .tab-content.active { display: flex; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .stat-box.month-highlight {
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.18) 0%, rgba(28, 33, 46, 1) 100%);
-            border-color: rgba(251, 191, 36, 0.4);
-        }
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-            font-weight: bold;
-        }
-        .stat-val {
-            font-size: 20px;
-            font-weight: 900;
-            color: var(--text-main);
-        }
-        .stat-box.today-highlight .stat-val { color: #34D399; font-size: 22px; }
-        .stat-box.month-highlight .stat-val { color: var(--primary); font-size: 22px; }
 
-        /* 卡片通用樣式 */
-        .card {
+        /* ================= 每日專屬導航 ================= */
+        .day-nav-bar {
             background: var(--bg-card);
-            border-radius: 18px;
-            padding: 18px;
             border: 1px solid var(--border);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-            transition: all 0.3s ease;
-        }
-        /* 編輯模式時高亮輸入卡片 */
-        .card.edit-mode {
-            border: 2px solid #10B981;
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.2);
-        }
-
-        .section-header {
+            border-radius: 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 14px;
+            padding: 10px 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        .section-title {
-            font-size: 16px;
+        .nav-arrow {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .nav-arrow:active { transform: scale(0.9); }
+        .day-nav-center {
+            text-align: center;
+            cursor: pointer;
+        }
+        .day-nav-title {
+            font-size: 17px;
+            font-weight: 900;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+        .day-nav-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-weight: bold;
+        }
+
+        /* ================= 獨立卡片設計 ================= */
+        .info-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .card-title {
+            font-size: 15px;
             font-weight: 800;
             margin: 0;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-
-        /* 日期與時租時間選擇區塊 */
-        .time-panel {
-            background: rgba(0, 0, 0, 0.25);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 12px;
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .date-duration-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-        .duration-badge {
-            background: rgba(96, 165, 250, 0.15);
-            border: 1px solid rgba(96, 165, 250, 0.35);
-            color: var(--accent-blue);
-            font-size: 13px;
-            font-weight: 800;
-            padding: 8px 12px;
-            border-radius: 10px;
-            white-space: nowrap;
-        }
-        .time-picker-grid {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            gap: 8px;
-        }
-        .time-box {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .time-box label {
-            font-size: 11px;
-            color: var(--text-muted);
+        .card-title.inc { color: var(--income); }
+        .card-title.exp { color: var(--expense); }
+        
+        .header-val {
+            font-size: 16px;
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* 輸入欄位網格 */
-        .group-label {
-            font-size: 13px;
-            font-weight: bold;
-            margin: 14px 0 8px 0;
-            padding-bottom: 6px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-        }
-        .group-label.inc { color: var(--income); }
-        .group-label.exp { color: var(--expense); }
-
+        /* 網格與輸入框 */
         .input-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
-        .field-box {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .field-box.full {
-            grid-column: 1 / -1;
-        }
+        .field-box { display: flex; flex-direction: column; gap: 5px; }
+        .field-box.full { grid-column: 1 / -1; }
         .field-box label {
             font-size: 12px;
             color: var(--text-muted);
             display: flex;
             justify-content: space-between;
+            font-weight: bold;
         }
-
-        .num-input, .date-input, .time-input, .note-input {
+        .num-input, .time-input, .note-input {
             width: 100%;
             background: rgba(0, 0, 0, 0.28);
             border: 1px solid rgba(255, 255, 255, 0.12);
@@ -214,19 +160,15 @@
             outline: none;
             transition: border 0.2s;
         }
-        .date-input { font-size: 14px; padding: 9px 12px; flex: 1; }
         .time-input { font-size: 15px; padding: 10px; text-align: center; }
         .note-input { font-size: 14px; font-weight: normal; }
-        .num-input:focus, .time-input:focus, .date-input:focus {
+        .num-input:focus, .time-input:focus {
             border-color: var(--primary);
             background: rgba(0, 0, 0, 0.45);
         }
 
-        /* ================= 逐單記帳專屬樣式 (清單式) ================= */
-        .trip-input-row {
-            display: flex;
-            gap: 8px;
-        }
+        /* 逐單記帳專屬 (清單式) */
+        .trip-input-row { display: flex; gap: 8px; }
         .trip-add-btn {
             background: var(--income);
             color: #000;
@@ -244,14 +186,13 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            margin-top: 10px;
-            max-height: 240px; /* 限制高度，多咗會捲動 */
+            margin-top: 4px;
+            max-height: 240px; 
             overflow-y: auto;
             background: rgba(0, 0, 0, 0.15);
             border-radius: 12px;
             padding: 6px;
         }
-        /* 隱藏捲軸令畫面更乾淨 */
         .trip-list::-webkit-scrollbar { display: none; }
         
         .trip-row-item {
@@ -268,17 +209,8 @@
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .trip-idx {
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: bold;
-            width: 55px; /* 固定闊度等金額對齊 */
-        }
-        .trip-amt {
-            font-size: 18px;
-            font-weight: 900;
-            color: #34D399;
-        }
+        .trip-idx { font-size: 13px; color: var(--text-muted); font-weight: bold; width: 60px; }
+        .trip-amt { font-size: 18px; font-weight: 900; color: #34D399; }
         .trip-del-btn {
             background: rgba(239, 68, 68, 0.15);
             color: #F87171;
@@ -289,70 +221,23 @@
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
         }
-        .trip-del-btn:active { background: rgba(239, 68, 68, 0.4); }
 
-        /* 實時結算看板 */
-        .live-result-box {
-            background: rgba(0, 0, 0, 0.38);
+        /* 結算面板與儲存按鈕 */
+        .summary-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 100%);
             border: 1px solid rgba(251, 191, 36, 0.35);
-            border-radius: 14px;
-            padding: 14px 16px;
-            margin: 18px 0 14px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .sub-calc-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: var(--text-muted);
         }
         .net-row {
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
-            padding-top: 8px;
-            border-top: 1px dashed rgba(255, 255, 255, 0.12);
-        }
-        .net-label {
-            font-size: 15px;
-            font-weight: bold;
-            color: var(--text-main);
-        }
-        .net-amount {
-            font-size: 28px;
-            font-weight: 900;
-            color: var(--primary);
-        }
-        .hourly-rate-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--accent-blue);
-        }
-        .day-combined-row {
-            display: none;
-            justify-content: space-between;
             align-items: center;
-            background: rgba(16, 185, 129, 0.12);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            color: #34D399;
-            margin-top: 2px;
+            padding: 8px 0;
         }
-
-        .action-btns {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .net-label { font-size: 15px; font-weight: bold; color: var(--text-main); }
+        .net-amount { font-size: 32px; font-weight: 900; color: var(--primary); }
+        
         .save-btn {
             width: 100%;
             background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
@@ -361,31 +246,51 @@
             padding: 15px;
             border-radius: 12px;
             font-size: 16px;
-            font-weight: 800;
+            font-weight: 900;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.25);
-            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+            margin-top: 4px;
         }
         .save-btn:active { transform: scale(0.98); }
-        .cancel-btn {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            border: 1px solid var(--border);
+
+        .del-day-btn {
+            background: transparent;
+            color: var(--expense);
+            border: 1px solid rgba(248, 113, 113, 0.3);
             padding: 12px;
             border-radius: 12px;
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            display: none; /* 預設隱藏，編輯模式才顯示 */
+            display: none; /* 只有當日已有紀錄時顯示 */
         }
 
-        /* 每日淨收入列表樣式 */
-        .history-list {
+        /* ================= 月份統計與歷史 (Tab 2) ================= */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
+        .stat-box.month-highlight {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(28, 33, 46, 1) 100%);
+            border-color: rgba(251, 191, 36, 0.4);
+            grid-column: 1 / -1;
+        }
+        .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold; }
+        .stat-val { font-size: 20px; font-weight: 900; color: var(--text-main); }
+        .stat-box.month-highlight .stat-val { color: var(--primary); font-size: 26px; }
+
+        .history-list { display: flex; flex-direction: column; gap: 14px; }
         .day-group-card {
             background: rgba(0, 0, 0, 0.28);
             border: 1px solid var(--border);
@@ -395,10 +300,12 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            cursor: pointer;
+            transition: 0.1s;
         }
-        .day-group-card.loss {
-            border-left-color: var(--expense);
-        }
+        .day-group-card:active { transform: scale(0.98); }
+        .day-group-card.loss { border-left-color: var(--expense); }
+        
         .day-header {
             display: flex;
             justify-content: space-between;
@@ -406,292 +313,332 @@
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .day-title {
-            font-size: 15px;
-            font-weight: 800;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .day-title { font-size: 15px; font-weight: 900; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .day-net-val { font-size: 20px; font-weight: 900; color: var(--primary); }
+
+        .shift-subitem {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.03); font-size: 12px;
         }
-        .day-hours-tag {
-            font-size: 11px;
-            color: var(--accent-blue);
-            background: rgba(96, 165, 250, 0.12);
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-weight: bold;
-        }
-        .day-net-badge {
-            text-align: right;
-        }
-        .day-net-label {
-            font-size: 11px;
-            color: var(--text-muted);
-            display: block;
-        }
-        .day-net-val {
-            font-size: 20px;
-            font-weight: 900;
-            color: var(--primary);
-        }
-        .day-summary-pills {
-            display: flex;
-            justify-content: space-between;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 8px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            flex-wrap: wrap;
-            gap: 4px;
+        .trip-detail-text {
+            font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.5;
+            border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;
         }
 
-        /* 單次租車明細行 */
-        .shift-subitem {
+        .footer-tools { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+        .tool-btn {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-muted); padding: 8px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
+        }
+
+        /* ================= 底部導航列 ================= */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--nav-height);
+            background: rgba(28, 33, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .nav-item {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.03);
-            font-size: 12px;
-        }
-        .shift-sub-top {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-        .shift-badge {
+            justify-content: center;
+            gap: 4px;
+            color: var(--text-muted);
             font-size: 11px;
             font-weight: bold;
-            padding: 2px 7px;
-            border-radius: 6px;
-            background: rgba(251, 191, 36, 0.15);
-            color: var(--primary);
-        }
-        .action-icon-btns {
-            display: flex;
-            gap: 2px;
-        }
-        .icon-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            font-size: 13px;
             cursor: pointer;
-            padding: 2px 6px;
+            transition: color 0.2s;
         }
-        .icon-btn.edit-btn:hover { color: #34D399; }
-        .icon-btn.del-btn:hover { color: var(--expense); }
-
-        .footer-tools {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 14px;
-        }
-        .tool-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-        }
+        .nav-icon { font-size: 22px; margin-bottom: 2px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active .nav-icon { text-shadow: 0 0 10px var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>🚕 的士時租收支結算簿</h2>
-        <p>做完一單入一筆 · 清單式實時對數</p>
-    </div>
+    <!-- ================= 版面 1：每日入數 (Daily Page) ================= -->
+    <div id="tabDaily" class="tab-content active">
+        
+        <!-- 每日專屬導航 -->
+        <div class="day-nav-bar">
+            <button class="nav-arrow" onclick="stepDay(-1)">◀</button>
+            <div class="day-nav-center" onclick="jumpToToday()">
+                <div class="day-nav-title" id="dayNavTitle">11月17日 (星期二)</div>
+                <div class="day-nav-sub" id="dayNavSub">📍 點擊返回今日</div>
+            </div>
+            <button class="nav-arrow" onclick="stepDay(1)">▶</button>
+        </div>
 
-    <!-- 頂部 2x2 統計看板 -->
-    <div class="stats-grid">
-        <div class="stat-box today-highlight">
-            <span class="stat-label" id="selectedDayLabel">📅 今日淨收入</span>
-            <span class="stat-val" id="statTodayNet">$0</span>
-        </div>
-        <div class="stat-box month-highlight">
-            <span class="stat-label">💰 本月累積淨收入</span>
-            <span class="stat-val" id="statMonthNet">$0</span>
-        </div>
-        <div class="stat-box">
-            <span class="stat-label">📊 每日平均淨收入</span>
-            <span class="stat-val" id="statAvgDailyNet">$0</span>
-        </div>
-        <div class="stat-box">
-            <span class="stat-label">⏱️ 本月開工日數 / 時數</span>
-            <span class="stat-val" id="statWorkDays" style="font-size:17px;">0 日 (0h)</span>
-        </div>
-    </div>
-
-    <!-- 入數主卡片 -->
-    <div class="card" id="inputCard">
-        <!-- 日期與時租時間選擇器 -->
-        <div class="time-panel">
-            <div class="date-duration-row">
-                <input type="date" id="workDate" class="date-input" onchange="onDateChange()">
-                <div class="duration-badge" id="durationBadge">⏱️ 共 6 小時</div>
+        <!-- 1. 時間卡片 -->
+        <div class="info-card">
+            <div class="card-header">
+                <h3 class="card-title">🕒 當值時間</h3>
+                <span class="duration-badge" id="durationBadge">⏱️ 6 小時</span>
             </div>
             <div class="time-picker-grid">
                 <div class="time-box">
-                    <label>🟢 取車時間</label>
+                    <label>🟢 取車</label>
                     <input type="time" id="startTime" class="time-input" value="14:00" onchange="onTimeChange()">
                 </div>
                 <div style="color:var(--text-muted); font-weight:bold; padding-top:16px;">➔</div>
                 <div class="time-box">
-                    <label>🔴 還車時間</label>
+                    <label>🔴 還車</label>
                     <input type="time" id="endTime" class="time-input" value="20:00" onchange="onTimeChange()">
                 </div>
             </div>
         </div>
 
-        <!-- 收入部分 (逐單輸入清單式) -->
-        <div class="group-label inc">
-            <span>➕ 記低每單車資 (自動計總數)</span>
-            <span id="liveIncText">+$0</span>
-        </div>
-        <div class="input-grid">
+        <!-- 2. 收入卡片 (逐單輸入) -->
+        <div class="info-card">
+            <div class="card-header">
+                <h3 class="card-title inc">➕ 營業額 (車資)</h3>
+                <span class="header-val" id="liveIncText" style="color:var(--income);">+$0</span>
+            </div>
             <div class="field-box full">
-                <label>💵 輸入單程車資 ($)</label>
                 <div class="trip-input-row">
-                    <input type="number" inputmode="decimal" id="tripAmount" class="num-input" placeholder="例如: 85" onkeypress="if(event.key==='Enter') addTrip()">
-                    <button class="trip-add-btn" onclick="addTrip()">➕ 記數</button>
+                    <input type="number" inputmode="decimal" id="tripAmount" class="num-input" placeholder="輸入單程車資 (例: 85)" onkeypress="if(event.key==='Enter') addTrip()">
+                    <button class="trip-add-btn" onclick="addTrip()">➕ 記單</button>
                 </div>
-                <!-- 垂直清單式顯示每一項 -->
+                <!-- 垂直清單式顯示每一單 -->
                 <div class="trip-list" id="tripListContainer"></div>
             </div>
         </div>
 
-        <!-- 開支部分 -->
-        <div class="group-label exp">
-            <span>➖ 出車開支成本</span>
-            <span id="liveExpText">-$0</span>
-        </div>
-        <div class="input-grid">
-            <div class="field-box">
-                <label>
-                    <span>🚕 今次車租總額 ($)</span>
-                    <span style="color:var(--primary); cursor:pointer;" onclick="fillLastRent()">[上次車租]</span>
-                </label>
-                <input type="number" inputmode="decimal" id="expRent" class="num-input" placeholder="幾錢租" oninput="onDirectRentInput()">
+        <!-- 3. 開支卡片 -->
+        <div class="info-card">
+            <div class="card-header">
+                <h3 class="card-title exp">➖ 開支成本</h3>
+                <span class="header-val" id="liveExpText" style="color:var(--expense);">-$0</span>
             </div>
-            <div class="field-box">
-                <label>
-                    <span>⏱️ 按時租自動計 (選填)</span>
-                </label>
-                <input type="number" inputmode="decimal" id="hourlyRate" class="num-input" placeholder="$/小時 (可不填)" oninput="onHourlyRateInput()">
-            </div>
-            <div class="field-box">
-                <label>⛽ 入氣 (石油氣)</label>
-                <input type="number" inputmode="decimal" id="expGas" class="num-input" placeholder="0" oninput="calcLive()">
-            </div>
-            <div class="field-box">
-                <label>🛣️ 隧道費</label>
-                <input type="number" inputmode="decimal" id="expTunnel" class="num-input" placeholder="0" oninput="calcLive()">
-            </div>
-            <div class="field-box full">
-                <label>🧽 其他雜費 (洗車 / 茶水 / 泊車)</label>
-                <input type="number" inputmode="decimal" id="expOther" class="num-input" placeholder="0" oninput="calcLive()">
-            </div>
-            <div class="field-box full">
-                <input type="text" id="shiftNote" class="note-input" placeholder="📝 備註 (例如：落雨旺場、交車入氣...)">
+            <div class="input-grid">
+                <div class="field-box">
+                    <label>
+                        <span>🚕 車租 ($)</span>
+                        <span style="color:var(--accent-blue); cursor:pointer;" onclick="fillLastRent()">[上次車租]</span>
+                    </label>
+                    <input type="number" inputmode="decimal" id="expRent" class="num-input" placeholder="0" oninput="onDirectRentInput()">
+                </div>
+                <div class="field-box">
+                    <label><span>⏱️ 時租 ($/h)</span></label>
+                    <input type="number" inputmode="decimal" id="hourlyRate" class="num-input" placeholder="自動計租" oninput="onHourlyRateInput()">
+                </div>
+                <div class="field-box">
+                    <label>⛽ 入氣 ($)</label>
+                    <input type="number" inputmode="decimal" id="expGas" class="num-input" placeholder="0" oninput="calcLive()">
+                </div>
+                <div class="field-box">
+                    <label>🛣️ 隧道/雜費 ($)</label>
+                    <input type="number" inputmode="decimal" id="expTunnel" class="num-input" placeholder="0" oninput="calcLive()">
+                </div>
+                <div class="field-box full">
+                    <input type="text" id="shiftNote" class="note-input" placeholder="📝 備註 (例如：落雨、特別更...)">
+                </div>
             </div>
         </div>
 
-        <!-- 實時結算看板 -->
-        <div class="live-result-box">
-            <div class="sub-calc-row">
-                <span>總營業額：<strong id="resTotalInc" style="color:var(--income);">$0</strong></span>
-                <span>總開支：<strong id="resTotalExp" style="color:var(--expense);">$0</strong></span>
-            </div>
+        <!-- 4. 結算與儲存 -->
+        <div class="info-card summary-card">
             <div class="net-row">
-                <span class="net-label">💰 呢轉落袋淨收入：</span>
+                <span class="net-label">💰 該日落袋淨收：</span>
                 <span class="net-amount" id="resNetProfit">$0</span>
             </div>
-            <div class="hourly-rate-row">
-                <span>⚡ 呢轉平均時薪：</span>
-                <strong id="resHourlyProfit">$0 / 小時</strong>
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+                <span>平均時薪: <strong id="resHourlyProfit" style="color:var(--accent-blue);">$0</strong></span>
+                <span id="tripCountSummary">共 0 單</span>
             </div>
-            <div class="day-combined-row" id="dayCombinedRow">
-                <span>📅 連同呢轉，該日合共淨收入：</span>
-                <strong id="resDayCombinedNet">$0</strong>
-            </div>
-        </div>
-
-        <div class="action-btns">
-            <button class="save-btn" id="mainSaveBtn" onclick="saveShiftRecord()">💾 儲存結算並計入紀錄</button>
-            <button class="cancel-btn" id="cancelEditBtn" onclick="cancelEdit()">❌ 取消修改</button>
+            
+            <button class="save-btn" onclick="saveDayRecord()">💾 儲存今日紀錄</button>
+            <button class="del-day-btn" id="delDayBtn" onclick="deleteCurrentDay()">🗑️ 刪除此日紀錄</button>
         </div>
     </div>
 
-    <!-- 每日淨收入結算紀錄卡片 -->
-    <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">📅 每日淨收入結算表</h3>
-            <input type="month" id="filterMonth" class="date-input" style="width:auto; flex:none; padding:6px 10px; font-size:12px;" onchange="renderAll()">
+    <!-- ================= 版面 2：每月結算 (Tab Monthly) ================= -->
+    <div id="tabMonthly" class="tab-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; font-size:20px; color:var(--primary);">📊 每月成績表</h2>
+            <input type="month" id="filterMonth" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:8px; font-size:14px; outline:none;" onchange="renderMonthlyTab()">
         </div>
+
+        <!-- 當月統計 3 格 -->
+        <div class="stats-grid" style="grid-template-columns: 1fr;">
+            <div class="stat-box month-highlight">
+                <span class="stat-label">💰 本月累積淨收入</span>
+                <span class="stat-val" id="statMonthNet">$0</span>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <span class="stat-label">📊 每日平均淨賺</span>
+                <span class="stat-val" id="statAvgDailyNet">$0</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">⏱️ 本月開工日數</span>
+                <span class="stat-val" id="statWorkDays" style="font-size:17px;">0 日 (0h)</span>
+            </div>
+        </div>
+
+        <!-- 歷史列表 -->
         <div class="history-list" id="historyList"></div>
 
         <div class="footer-tools">
-            <button class="tool-btn" onclick="exportData()">📤 匯出備份</button>
+            <button class="tool-btn" onclick="exportData()">📤 匯出備份檔</button>
             <button class="tool-btn" onclick="document.getElementById('importInput').click()">📥 匯入還原</button>
             <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
         </div>
     </div>
 </div>
 
+<!-- ================= 底部導航列 ================= -->
+<div class="bottom-nav">
+    <div class="nav-item active" id="navDaily" onclick="switchTab('Daily')">
+        <div class="nav-icon">📝</div>
+        <div>每日入數</div>
+    </div>
+    <div class="nav-item" id="navMonthly" onclick="switchTab('Monthly')">
+        <div class="nav-icon">📊</div>
+        <div>每月結算</div>
+    </div>
+</div>
+
 <script>
-    // 獨立資料庫，避免舊版標籤式資料衝突
-    let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v4')) || [];
+    // 獨立資料庫，採用 v6 確保無舊格式衝突
+    let records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v6')) || [];
     if (records.length === 0) {
-        records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v3')) || [];
+        records = JSON.parse(localStorage.getItem('hk_taxi_ledger_v5')) || [];
     }
     
+    let currentViewDateObj = new Date(); 
     let currentHours = 6;
-    let currentTrips = []; // 暫存每一單收入
-    let editingRecordId = null;
+    let currentTrips = []; 
+    let currentEditingId = null;
+
+    const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
     window.onload = () => {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-
-        document.getElementById('workDate').value = `${yyyy}-${mm}-${dd}`;
-        document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
-
+        // 設定預設時間
         const savedStart = localStorage.getItem('hk_taxi_start_time');
         const savedEnd = localStorage.getItem('hk_taxi_end_time');
         if (savedStart) document.getElementById('startTime').value = savedStart;
         if (savedEnd) document.getElementById('endTime').value = savedEnd;
 
-        const savedHourlyRate = localStorage.getItem('hk_taxi_hourly_rate');
-        const lastRent = localStorage.getItem('hk_taxi_last_rent');
+        // 初始化月曆過濾器為今個月
+        const yyyy = currentViewDateObj.getFullYear();
+        const mm = String(currentViewDateObj.getMonth() + 1).padStart(2, '0');
+        document.getElementById('filterMonth').value = `${yyyy}-${mm}`;
 
-        calcDurationHours();
+        loadDayData(currentViewDateObj);
+    };
 
-        if (savedHourlyRate) {
-            document.getElementById('hourlyRate').value = savedHourlyRate;
-            document.getElementById('expRent').value = Math.round(parseFloat(savedHourlyRate) * currentHours);
-        } else if (lastRent) {
-            document.getElementById('expRent').value = lastRent;
+    // ================= 分頁控制 =================
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('tab' + tabName).classList.add('active');
+        document.getElementById('nav' + tabName).classList.add('active');
+        
+        if (tabName === 'Monthly') {
+            renderMonthlyTab();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ================= 每日導航邏輯 =================
+    function getFormattedDate(dObj) {
+        const y = dObj.getFullYear();
+        const m = String(dObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function jumpToToday() {
+        currentViewDateObj = new Date();
+        loadDayData(currentViewDateObj);
+    }
+
+    function stepDay(delta) {
+        currentViewDateObj.setDate(currentViewDateObj.getDate() + delta);
+        loadDayData(currentViewDateObj);
+    }
+
+    function jumpToSpecificDay(dateStr) {
+        currentViewDateObj = new Date(dateStr);
+        loadDayData(currentViewDateObj);
+        switchTab('Daily');
+    }
+
+    // 載入指定日期的資料去畫面
+    function loadDayData(dObj) {
+        const dateStr = getFormattedDate(dObj);
+        
+        // 更新頂部標題
+        const m = dObj.getMonth() + 1;
+        const d = dObj.getDate();
+        const w = WEEKDAYS[dObj.getDay()];
+        document.getElementById('dayNavTitle').innerText = `${m}月${d}日 (星期${w})`;
+
+        const now = new Date();
+        const isToday = (dateStr === getFormattedDate(now));
+        document.getElementById('dayNavSub').innerText = isToday ? "📍 今日" : "點擊返回今日";
+
+        // 搜尋資料庫有無呢日嘅紀錄
+        const record = records.find(r => r.date === dateStr);
+        
+        if (record) {
+            currentEditingId = record.id;
+            document.getElementById('startTime').value = record.startTime;
+            document.getElementById('endTime').value = record.endTime;
+            currentTrips = [...(record.trips || [])];
+            
+            document.getElementById('expRent').value = record.rent || '';
+            document.getElementById('hourlyRate').value = ''; 
+            document.getElementById('expGas').value = record.gas || '';
+            document.getElementById('expTunnel').value = record.tunnel || '';
+            document.getElementById('expOther').value = record.other || '';
+            document.getElementById('shiftNote').value = record.note || '';
+
+            document.getElementById('delDayBtn').style.display = 'block';
+        } else {
+            currentEditingId = null;
+            currentTrips = [];
+            
+            // 如果無紀錄，清空開支 (但保留時間同帶入上次車租/時薪)
+            const savedHourlyRate = localStorage.getItem('hk_taxi_hourly_rate');
+            const lastRent = localStorage.getItem('hk_taxi_last_rent');
+            
+            calcDurationHours();
+            if (savedHourlyRate) {
+                document.getElementById('hourlyRate').value = savedHourlyRate;
+                document.getElementById('expRent').value = Math.round(parseFloat(savedHourlyRate) * currentHours);
+            } else if (lastRent) {
+                document.getElementById('expRent').value = lastRent;
+                document.getElementById('hourlyRate').value = '';
+            } else {
+                document.getElementById('expRent').value = '';
+                document.getElementById('hourlyRate').value = '';
+            }
+            
+            document.getElementById('expGas').value = '';
+            document.getElementById('expTunnel').value = '';
+            document.getElementById('expOther').value = '';
+            document.getElementById('shiftNote').value = '';
+
+            document.getElementById('delDayBtn').style.display = 'none';
         }
 
         renderTrips();
         calcLive();
-        renderAll();
-    };
-
-    function onDateChange() {
-        calcLive();
-        renderAll();
     }
 
+    // ================= 時間與計算 =================
     function calcDurationHours() {
         const startStr = document.getElementById('startTime').value;
         const endStr = document.getElementById('endTime').value;
@@ -713,7 +660,6 @@
 
         const diffHours = (endMinutes - startMinutes) / 60;
         currentHours = Math.round(diffHours * 10) / 10;
-
         document.getElementById('durationBadge').innerText = `⏱️ 共 ${currentHours} 小時`;
     }
 
@@ -761,7 +707,7 @@
         return (num >= 0 ? '$' : '-$') + Math.abs(Math.round(num)).toLocaleString();
     }
 
-    // --- 逐單記帳 (清單式渲染) ---
+    // ================= 逐單記帳 (清單式渲染) =================
     function addTrip() {
         const input = document.getElementById('tripAmount');
         const val = parseFloat(input.value);
@@ -785,11 +731,11 @@
         container.innerHTML = '';
         
         if (currentTrips.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:16px 0;">尚未輸入任何車資，請在上方輸入並撳「➕ 記數」</div>`;
+            container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:16px 0;">尚未輸入任何車資，請在上方輸入並撳「➕ 記單」</div>`;
             return;
         }
 
-        // 反向排序顯示，等最新入嗰單喺最頂，唔使成日碌落去
+        // 倒序顯示
         [...currentTrips].reverse().forEach((amt, reversedIdx) => {
             const realIdx = currentTrips.length - 1 - reversedIdx;
             container.innerHTML += `
@@ -818,96 +764,20 @@
 
         document.getElementById('liveIncText').innerText = `+$${totalInc.toFixed(0)}`;
         document.getElementById('liveExpText').innerText = `-$${totalExp.toFixed(0)}`;
-        document.getElementById('resTotalInc').innerText = `$${totalInc.toFixed(0)}`;
-        document.getElementById('resTotalExp').innerText = `$${totalExp.toFixed(0)}`;
-
+        
         const netEl = document.getElementById('resNetProfit');
         netEl.innerText = formatMoney(net);
         netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--expense)';
 
-        document.getElementById('resHourlyProfit').innerText = `${formatMoney(hourlyProfit)} / 小時`;
-
-        const selectedDate = document.getElementById('workDate').value;
-        
-        let existingDayNet = 0;
-        records.forEach(r => {
-            if (r.date === selectedDate && r.id !== editingRecordId) {
-                existingDayNet += r.net;
-            }
-        });
-
-        const combinedRow = document.getElementById('dayCombinedRow');
-        if (existingDayNet !== 0 || editingRecordId) {
-            combinedRow.style.display = 'flex';
-            document.getElementById('resDayCombinedNet').innerText = formatMoney(existingDayNet + net);
-        } else {
-            combinedRow.style.display = 'none';
-        }
+        document.getElementById('resHourlyProfit').innerText = `${formatMoney(hourlyProfit)}`;
+        document.getElementById('tripCountSummary').innerText = `共 ${currentTrips.length} 單`;
     }
 
-    // ================= 編輯與儲存邏輯 =================
-    function editRecord(id) {
-        const record = records.find(r => r.id === id);
-        if (!record) return;
-
-        editingRecordId = id;
-
-        document.getElementById('workDate').value = record.date;
-        document.getElementById('startTime').value = record.startTime;
-        document.getElementById('endTime').value = record.endTime;
-        
-        currentTrips = [...(record.trips || [])];
-        renderTrips();
-
-        document.getElementById('expRent').value = record.rent || '';
-        document.getElementById('hourlyRate').value = ''; 
-        document.getElementById('expGas').value = record.gas || '';
-        document.getElementById('expTunnel').value = record.tunnel || '';
-        document.getElementById('expOther').value = record.other || '';
-        document.getElementById('shiftNote').value = record.note || '';
-
-        document.getElementById('inputCard').classList.add('edit-mode');
-        const saveBtn = document.getElementById('mainSaveBtn');
-        saveBtn.innerText = '💾 儲存修改';
-        saveBtn.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
-        document.getElementById('cancelEditBtn').style.display = 'block';
-
-        calcDurationHours();
-        calcLive();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function cancelEdit() {
-        editingRecordId = null;
-        currentTrips = [];
-        renderTrips();
-
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        document.getElementById('workDate').value = `${yyyy}-${mm}-${dd}`;
-
-        document.getElementById('expGas').value = '';
-        document.getElementById('expTunnel').value = '';
-        document.getElementById('expOther').value = '';
-        document.getElementById('shiftNote').value = '';
-
-        document.getElementById('inputCard').classList.remove('edit-mode');
-        const saveBtn = document.getElementById('mainSaveBtn');
-        saveBtn.innerText = '💾 儲存結算並計入紀錄';
-        saveBtn.style.background = 'linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)';
-        document.getElementById('cancelEditBtn').style.display = 'none';
-
-        calcDurationHours();
-        calcLive();
-    }
-
-    function saveShiftRecord() {
-        const date = document.getElementById('workDate').value;
+    // ================= 儲存紀錄 =================
+    function saveDayRecord() {
+        const dateStr = getFormattedDate(currentViewDateObj);
         const startTime = document.getElementById('startTime').value;
         const endTime = document.getElementById('endTime').value;
-        const timeSlotStr = `🕒 ${startTime}-${endTime} (${currentHours}h)`;
 
         const totalInc = currentTrips.reduce((sum, amt) => sum + amt, 0);
         const tripCount = currentTrips.length;
@@ -924,17 +794,14 @@
             return;
         }
 
-        if (!editingRecordId) {
-            localStorage.setItem('hk_taxi_start_time', startTime);
-            localStorage.setItem('hk_taxi_end_time', endTime);
-        }
-        if (rent > 0) {
-            localStorage.setItem('hk_taxi_last_rent', rent);
-        }
+        // 記住時間與車租設定
+        localStorage.setItem('hk_taxi_start_time', startTime);
+        localStorage.setItem('hk_taxi_end_time', endTime);
+        if (rent > 0) localStorage.setItem('hk_taxi_last_rent', rent);
 
         const recordData = {
-            date,
-            shift: timeSlotStr,
+            date: dateStr,
+            shift: `🕒 ${startTime}-${endTime} (${currentHours}h)`,
             startTime,
             endTime,
             hours: currentHours,
@@ -950,191 +817,115 @@
             note
         };
 
-        if (editingRecordId) {
-            recordData.id = editingRecordId;
-            const index = records.findIndex(r => r.id === editingRecordId);
-            if (index !== -1) {
-                records[index] = recordData;
-            }
-            cancelEdit(); 
+        if (currentEditingId) {
+            // 更新舊有紀錄
+            recordData.id = currentEditingId;
+            const index = records.findIndex(r => r.id === currentEditingId);
+            if (index !== -1) records[index] = recordData;
         } else {
+            // 新增紀錄
             recordData.id = 'tx-' + Date.now();
-            records.unshift(recordData);
-            currentTrips = [];
-            renderTrips();
-            document.getElementById('expGas').value = '';
-            document.getElementById('expTunnel').value = '';
-            document.getElementById('expOther').value = '';
-            document.getElementById('shiftNote').value = '';
+            records.push(recordData); // 新版直接 push, sorting 會搞掂
         }
 
         records.sort((a, b) => b.date.localeCompare(a.date));
-        localStorage.setItem('hk_taxi_ledger_v4', JSON.stringify(records));
+        localStorage.setItem('hk_taxi_ledger_v6', JSON.stringify(records));
 
-        calcLive();
-        renderAll();
+        // 刷新畫面並顯示刪除掣
+        loadDayData(currentViewDateObj);
+        alert('✅ 已儲存此日結算！');
     }
 
-    // ================= 渲染歷史清單 =================
-    function renderAll() {
-        const selectedDate = document.getElementById('workDate').value;
+    function deleteCurrentDay() {
+        if (!confirm('確定要刪除此日紀錄嗎？')) return;
+        records = records.filter(r => r.id !== currentEditingId);
+        localStorage.setItem('hk_taxi_ledger_v6', JSON.stringify(records));
+        loadDayData(currentViewDateObj);
+    }
+
+    // ================= 渲染每月結算 (Tab 2) =================
+    function renderMonthlyTab() {
         const selectedMonth = document.getElementById('filterMonth').value;
         const listEl = document.getElementById('historyList');
         listEl.innerHTML = '';
-
-        const nowStr = new Date().toISOString().slice(0, 10);
-        document.getElementById('selectedDayLabel').innerText =
-            selectedDate === nowStr ? '📅 今日淨收入' : `📅 ${selectedDate.slice(5)} 淨收入`;
-
-        const dayNet = records
-            .filter(r => r.date === selectedDate)
-            .reduce((sum, r) => sum + r.net, 0);
-        const todayNetEl = document.getElementById('statTodayNet');
-        todayNetEl.innerText = formatMoney(dayNet);
-        todayNetEl.style.color = dayNet >= 0 ? '#34D399' : 'var(--expense)';
 
         const filtered = selectedMonth
             ? records.filter(r => r.date.startsWith(selectedMonth))
             : records;
 
-        const dayGroups = {};
+        let monthNet = 0;
+        let monthHours = 0;
+        
         filtered.forEach(r => {
-            if (!dayGroups[r.date]) {
-                dayGroups[r.date] = {
-                    date: r.date,
-                    totalHours: 0,
-                    totalInc: 0,
-                    totalTrips: 0,
-                    totalExp: 0,
-                    totalRent: 0,
-                    totalGas: 0,
-                    totalTunnel: 0,
-                    totalOther: 0,
-                    dailyNet: 0,
-                    items: []
-                };
-            }
-            const g = dayGroups[r.date];
-            g.totalHours += (r.hours || 0);
-            g.totalInc += r.totalInc;
-            g.totalTrips += (r.tripCount || 0);
-            g.totalExp += r.totalExp;
-            g.totalRent += r.rent;
-            g.totalGas += r.gas;
-            g.totalTunnel += r.tunnel;
-            g.totalOther += r.other;
-            g.dailyNet += r.net;
-            g.items.push(r);
+            monthNet += r.net;
+            monthHours += (r.hours || 0);
         });
 
-        const sortedDays = Object.values(dayGroups).sort((a, b) => b.date.localeCompare(a.date));
-
-        const monthNet = sortedDays.reduce((sum, d) => sum + d.dailyNet, 0);
-        const monthHours = Math.round(sortedDays.reduce((sum, d) => sum + d.totalHours, 0) * 10) / 10;
-        const uniqueWorkDays = sortedDays.length;
+        const uniqueWorkDays = filtered.length;
         const avgDailyNet = uniqueWorkDays > 0 ? Math.round(monthNet / uniqueWorkDays) : 0;
+        monthHours = Math.round(monthHours * 10) / 10;
 
         document.getElementById('statMonthNet').innerText = formatMoney(monthNet);
         document.getElementById('statWorkDays').innerText = `${uniqueWorkDays} 日 (${monthHours}h)`;
         document.getElementById('statAvgDailyNet').innerText = formatMoney(avgDailyNet);
 
-        if (sortedDays.length === 0) {
-            listEl.innerHTML = `<div style="text-align:center; padding:30px 0; color:var(--text-muted); font-size:13px;">呢個月暫時未有出車紀錄</div>`;
+        if (filtered.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding:40px 0; color:var(--text-muted); font-size:14px;">呢個月暫時未有出車紀錄</div>`;
             return;
         }
 
-        sortedDays.forEach(day => {
+        filtered.forEach(item => {
             const card = document.createElement('div');
-            card.className = `day-group-card ${day.dailyNet < 0 ? 'loss' : ''}`;
+            card.className = `day-group-card ${item.net < 0 ? 'loss' : ''}`;
+            // 點擊成張卡自動跳去嗰日
+            card.onclick = () => jumpToSpecificDay(item.date);
 
             let expBreakdown = [];
-            if (day.totalRent > 0) expBreakdown.push(`車租 $${day.totalRent}`);
-            if (day.totalGas > 0) expBreakdown.push(`入氣 $${day.totalGas}`);
-            if (day.totalTunnel > 0) expBreakdown.push(`隧道 $${day.totalTunnel}`);
-            if (day.totalOther > 0) expBreakdown.push(`其他 $${day.totalOther}`);
+            if (item.rent > 0) expBreakdown.push(`租 $${item.rent}`);
+            if (item.gas > 0) expBreakdown.push(`氣 $${item.gas}`);
+            if (item.tunnel > 0) expBreakdown.push(`隧道 $${item.tunnel}`);
+            if (item.other > 0) expBreakdown.push(`雜 $${item.other}`);
 
-            let shiftsHtml = '';
-            day.items.forEach(item => {
-                const tripLabel = item.tripCount > 0 ? `(${item.tripCount} 單)` : '';
-                
-                // 歷史紀錄加入逐單明細顯示
-                let tripDetailsHtml = '';
-                if (item.trips && item.trips.length > 0) {
-                    tripDetailsHtml = `
-                        <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4; border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">
-                            🧾 <strong>車資明細：</strong> ${item.trips.map(t => '$'+t).join('、')}
-                        </div>
-                    `;
-                }
+            const tripLabel = item.tripCount > 0 ? `(共 ${item.tripCount} 單)` : '';
+            const hoursLabel = item.hours > 0 ? `<span class="day-hours-tag">⏱️ ${item.hours}h</span>` : '';
 
-                shiftsHtml += `
-                    <div class="shift-subitem">
-                        <div class="shift-sub-top">
-                            <div>
-                                <span class="shift-badge">${item.shift || '時租'}</span>
-                                <span style="color:var(--text-muted); margin-left:6px;">
-                                    收 $${item.totalInc} ${tripLabel} | 支 -$${item.totalExp}
-                                </span>
-                            </div>
-                            <div class="action-icon-btns">
-                                <strong style="color:${item.net >= 0 ? 'var(--text-main)' : 'var(--expense)'}; margin-right:8px;">
-                                    淨收 ${formatMoney(item.net)}
-                                </strong>
-                                <button class="icon-btn edit-btn" onclick="editRecord('${item.id}')" title="修改此筆">✏️</button>
-                                <button class="icon-btn del-btn" onclick="deleteRecord('${item.id}')" title="刪除此筆">✕</button>
-                            </div>
-                        </div>
-                        ${tripDetailsHtml}
-                        ${item.note ? `<div style="color:#CBD5E1; margin-top:4px;">📝 ${item.note}</div>` : ''}
+            let tripDetailsHtml = '';
+            if (item.trips && item.trips.length > 0) {
+                tripDetailsHtml = `
+                    <div class="trip-detail-text">
+                        🧾 <strong>車資明細：</strong> ${item.trips.map(t => '$'+t).join('、')}
                     </div>
                 `;
-            });
-
-            const hoursLabel = day.totalHours > 0 ? `<span class="day-hours-tag">⏱️ ${Math.round(day.totalHours * 10) / 10} 小時</span>` : '';
-            const totalTripsLabel = day.totalTrips > 0 ? ` (共 ${day.totalTrips} 單)` : '';
+            }
 
             card.innerHTML = `
                 <div class="day-header">
                     <div class="day-title">
-                        <span>📅 ${day.date}</span>
+                        <span>📅 ${item.date}</span>
                         ${hoursLabel}
                     </div>
-                    <div class="day-net-badge">
-                        <span class="day-net-label">當日淨收入</span>
-                        <span class="day-net-val" style="color:${day.dailyNet >= 0 ? 'var(--primary)' : 'var(--expense)'}">
-                            ${formatMoney(day.dailyNet)}
-                        </span>
+                    <div class="day-net-val" style="color:${item.net >= 0 ? 'var(--primary)' : 'var(--expense)'}">
+                        ${formatMoney(item.net)}
                     </div>
                 </div>
                 <div class="day-summary-pills">
-                    <span style="color:var(--income); font-weight:bold;">總營業額: +$${day.totalInc} ${totalTripsLabel}</span>
-                    <span style="color:var(--expense);">總開支: -$${day.totalExp} (${expBreakdown.join(' · ') || '無'})</span>
+                    <span style="color:var(--income); font-weight:bold;">收: +$${item.totalInc} ${tripLabel}</span>
+                    <span style="color:var(--expense);">支: -$${item.totalExp} (${expBreakdown.join(' · ') || '無'})</span>
                 </div>
-                ${shiftsHtml}
+                ${tripDetailsHtml}
+                ${item.note ? `<div style="color:#CBD5E1; font-size:12px; margin-top:8px;">📝 ${item.note}</div>` : ''}
             `;
             listEl.appendChild(card);
         });
     }
 
-    function deleteRecord(id) {
-        if (!confirm('確定要刪除呢筆紀錄嗎？')) return;
-        records = records.filter(r => r.id !== id);
-        localStorage.setItem('hk_taxi_ledger_v4', JSON.stringify(records));
-        
-        if (editingRecordId === id) {
-            cancelEdit();
-        } else {
-            calcLive();
-            renderAll();
-        }
-    }
-
+    // 備份還原
     function exportData() {
         if (records.length === 0) return alert('暫時無紀錄可以匯出！');
         const blob = new Blob([JSON.stringify(records)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `taxi-trip-ledger-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `taxi-diary-ledger-${new Date().toISOString().slice(0,10)}.json`;
         a.click();
     }
 
@@ -1147,8 +938,8 @@
                 const imported = JSON.parse(ev.target.result);
                 if (!Array.isArray(imported)) throw new Error();
                 records = imported;
-                localStorage.setItem('hk_taxi_ledger_v4', JSON.stringify(records));
-                cancelEdit();
+                localStorage.setItem('hk_taxi_ledger_v6', JSON.stringify(records));
+                loadDayData(currentViewDateObj);
                 alert('✅ 成功還原出車紀錄！');
             } catch {
                 alert('⚠️ 備份檔案格式不正確！');
